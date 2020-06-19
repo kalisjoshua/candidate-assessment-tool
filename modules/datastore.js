@@ -23,35 +23,26 @@ if (!store['candidates']) {
   ].sort()
     .map((name) => ({id: Math.random().toString(36).slice(2, 8), name}))
 
-  store['competencies'] = [
-    {
-      title: 'Culture',
-      questions: [
-        // 'How do you demonstrate behaviors that are in line with our ISMs',
-        'Attitude and behavior are in line with the ISMs?',
-        // 'How do you demonstrate behavior that is in line with your team standards',
-        'Attitude and behavior are in line with team standards?',
-      ],
-    },
-    {
-      title: 'Competency',
-      questions: [
-        // 'How do you demonstrate the skills expected for your role?',
-        'Skill level is at or above expected level?',
-        // 'How do you actively work to develop your skills and reach your career goals?',
-        'Actively works to develop skills and reach career goals?',
-      ],
-    },
-    {
-      title: 'Contribution',
-      questions: [
-        // 'How have you impacted the team\'s ability to achieve their goals?',
-        'Contributes to the ability of the team to achieve their goals?',
-        // 'How often do you deliver on your goals, assignments and deadlines?',
-        'Deliver on goals, assignments and deadlines?',
-      ],
-    },
-  ]
+  store['competencies'] = {
+    Culture: [
+      // 'How do you demonstrate behaviors that are in line with our ISMs',
+      'Attitude and behavior are in line with the ISMs?',
+      // 'How do you demonstrate behavior that is in line with your team standards',
+      'Attitude and behavior are in line with team standards?',
+    ],
+    Competency: [
+      // 'How do you demonstrate the skills expected for your role?',
+      'Skill level is at or above expected level?',
+      // 'How do you actively work to develop your skills and reach your career goals?',
+      'Actively works to develop skills and reach career goals?',
+    ],
+    Contribution: [
+      // 'How have you impacted the team\'s ability to achieve their goals?',
+      'Contributes to the ability of the team to achieve their goals?',
+      // 'How often do you deliver on your goals, assignments and deadlines?',
+      'Deliver on goals, assignments and deadlines?',
+    ],
+  }
 
   store['ratings'] = [
     {
@@ -190,15 +181,16 @@ if (!store['candidates']) {
           acc.themes.push(title)
           break
         case '+':
-          acc.topics.push({questions: [], theme, title})
+          acc.questions.push({followups: [], theme, title})
           break
         case '-':
-          acc.topics[acc.topics.length - 1].questions.push(title)
+          acc.questions[acc.questions.length - 1].followups.push(title)
           break
       }
 
       return acc
-    }, {themes: [], topics: []})
+    }, {themes: [], questions: []})
 
-  store['topics'] = topics
+  store['questions'] = topics.questions
+  store['themes'] = topics.themes
 }
