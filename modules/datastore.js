@@ -10,18 +10,47 @@ export default {
 // *** TEST DATA *** //
 if (!store['candidates']) {
   store['candidates'] = [
-    'Reynolds, Malcolm',
-    'Washburne, Zoe',
-    'Washburne, Hoban',
-    'Serra, Inara',
-    'Cobb, Jayne',
-    'Frye, Kaylee',
-    'Tam, Simon',
-    'Tam, River',
-    'Book, Derrial "Shepherd"',
-    'Early, Jubal',
-  ].sort()
-    .map((name) => ({id: Math.random().toString(36).slice(2, 8), name}))
+    {
+        "id": "moaczk",
+        "name": "Book, Derrial \"Shepherd\""
+    },
+    {
+        "id": "h2t1ta",
+        "name": "Cobb, Jayne"
+    },
+    {
+        "id": "3sjmcd",
+        "name": "Early, Jubal"
+    },
+    {
+        "id": "w7loxg",
+        "name": "Frye, Kaylee"
+    },
+    {
+        "id": "5o7u2u",
+        "name": "Reynolds, Malcolm"
+    },
+    {
+        "id": "ibf8k5",
+        "name": "Serra, Inara"
+    },
+    {
+        "id": "qxzih1",
+        "name": "Tam, River"
+    },
+    {
+        "id": "biwgyi",
+        "name": "Tam, Simon"
+    },
+    {
+        "id": "syd3vp",
+        "name": "Washburne, Hoban"
+    },
+    {
+        "id": "d6v2o7",
+        "name": "Washburne, Zoe"
+    }
+  ]
 
   store['competencies'] = {
     Culture: [

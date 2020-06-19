@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 
 const hook = (a, [v, set] = useState(a)) => ({set, get value () {return v}})
 
@@ -23,16 +23,15 @@ export async function getStaticProps ({params: {id}}) {
   return {props: (candidate ? {candidate, ...meta} : {...meta})}
 }
 
-function Candidate (props) {
-  const candidate = hook(props.candidate)
+function Candidate ({candidate, questions, themes}) {
+  useEffect(() => {
+    document.title = `${candidate.name} - Candidate Assessment Tool`
+  })
 
-  // FIXME: for development purposes only
-  !candidate.value && getAll().then(([c]) => candidate.set(c))
-
-  return candidate.value
+  return candidate
     ? (
       <fragment>
-        <h2>{candidate.value.name}</h2>
+        <h2>{candidate.name}</h2>
 
         {false && <pre>{JSON.stringify(props, null, 4)}</pre>}
 
@@ -41,7 +40,7 @@ function Candidate (props) {
         <h3>Theme Ratings</h3>
 
         <ul className="theme-ratings">
-          {props.themes.map((s) => <li>{s}</li>)}
+          {themes.map((s) => <li>{s}</li>)}
         </ul>
 
         <hr />
@@ -49,11 +48,11 @@ function Candidate (props) {
         <h3>Questions</h3>
 
         <ul className="theme-filters">
-          {props.themes.map((s) => <li>{s}</li>)}
+          {themes.map((s) => <li>{s}</li>)}
         </ul>
 
         <ul>
-          {props.questions.map(({title}) => <li>{title}</li>)}
+          {questions.map(({title}) => <li>{title}</li>)}
         </ul>
 
         <hr />
