@@ -8,17 +8,15 @@ const links = [
     title: 'Candidates',
   }
 ]
+const reducer = (acc, resource) => ({
+  ...acc,
+  [resource]: datastore.get(resource) || []
+})
+const root = ['competencies', 'ratings', 'topics']
+  .reduce(reducer, {links})
 
 export default factory({
-  // returns a list of all candidates
   GET: (req, res) => {
-    const reducer = (acc, resource) => ({
-      ...acc,
-      [resource]: datastore.get(resource) || []
-    })
-    const root = ['competencies', 'questions', 'ratings']
-      .reduce(reducer, {links})
-
     res.status(200).json(root)
   },
 })

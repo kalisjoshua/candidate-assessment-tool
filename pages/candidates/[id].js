@@ -1,6 +1,6 @@
 // Name, Candidate
 //
-// Competence          Culture             Other...?
+// Competence          Culture      Contribution...?
 // * * * * *           * * * * *           * * * * *
 //
 // Notes                                           ^

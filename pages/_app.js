@@ -21,7 +21,6 @@ class Candidates extends App {
           <nav>
             <ul>
               <li><Link href="/"><a>Home</a></Link></li>
-              <li><Link href="/api/test-data"><a>Load Test Data</a></Link></li>
             </ul>
           </nav>
         </header>

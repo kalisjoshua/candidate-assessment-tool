@@ -1,3 +1,14 @@
+# Candidate Assessment Tool
+
+This project is an attempt to make an application with "real-time" feedback for
+interviewers during an interview while also coordinating the questions to ask
+during the interview and, maybe eventually, who should ask them. The goal being
+to make the interviewing experience more consistent and repeatable without the
+need for "expert" interviewers. The tool will also accept feedback from each
+interviewer to help make a more "object" decision after the interview is complete.
+
+---
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
