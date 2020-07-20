@@ -1,7 +1,5 @@
 import {useEffect, useState} from 'react'
 
-const hook = (a, [v, set] = useState(a)) => ({set, get value () {return v}})
-
 const getAll = () => fetch('http://localhost:3000/api/candidates')
   .then((res) => res.json())
 
@@ -23,7 +21,15 @@ export async function getStaticProps ({params: {id}}) {
   return {props: (candidate ? {candidate, ...meta} : {...meta})}
 }
 
-function Candidate ({candidate, questions, themes}) {
+function Candidate ({candidate, questions, ratings, themes}) {
+  // console.log({candidate, questions, ratings, themes})
+
+  const ratingsForThemes = {
+    group: candidate.ratings,
+    // mine:
+    scale: ratings,
+  }
+
   useEffect(() => {
     document.title = `${candidate.name} - Candidate Assessment Tool`
   })
@@ -33,26 +39,22 @@ function Candidate ({candidate, questions, themes}) {
       <fragment>
         <h2>{candidate.name}</h2>
 
-        {false && <pre>{JSON.stringify(props, null, 4)}</pre>}
-
         <hr />
 
         <h3>Theme Ratings</h3>
 
         <ul className="theme-ratings">
-          {themes.map((s) => <li>{s}</li>)}
+          {themes.map((title, i) => (
+            <Theme key={`${title}-${i}`} ratings={ratingsForThemes} title={title}/>
+          ))}
         </ul>
 
         <hr />
 
         <h3>Questions</h3>
 
-        <ul className="theme-filters">
-          {themes.map((s) => <li>{s}</li>)}
-        </ul>
-
         <ul>
-          {questions.map(({title}) => <li>{title}</li>)}
+          {questions.map(({title}, i) => <li key={i}>{title}</li>)}
         </ul>
 
         <hr />
@@ -72,22 +74,9 @@ function Candidate ({candidate, questions, themes}) {
         <button>Submit Evaluation</button>
 
         <style jsx>{`
-          .theme-filters {
+          .theme-ratings {
             margin: 0;
             padding: 0;
-          }
-
-          .theme-filters li {
-            background: gainsboro;
-            cursor: pointer;
-            display: inline;
-            line-height: 4ex;
-            list-style-type: none;
-            padding: 4px 1ex;
-          }
-
-          .theme-filters li + li {
-            margin-left: 1ex;
           }
         `}</style>
 
@@ -96,15 +85,22 @@ function Candidate ({candidate, questions, themes}) {
 
         ~~~~~~~~~~~~~~~~~~~~~ Themes ~~~~~~~~~~~~~~~~~~~~
 
-        poor good
-        * * * * *    Communication              * * * * *
-        * * * * *    Teamwork                   * * * * *
-        * * * * *    Emotional Intelligence     * * * * *
-        * * * * *    Coachability               * * * * *
-        * * * * *    Initiative                 * * * * *
-        * * * * *    Professional Development   * * * * *
-        * * * * *    Critical Thinking          * * * * *
-        * * * * *    Time Management            * * * * *
+        Communication                              (show)
+        * * * * *                               * * * * *
+        Teamwork                                   (show)
+        * * * * *                               * * * * *
+        Emotional Intelligence                     (hide)
+        * * * * *                               * * * * *
+        Coachability                               (show)
+        * * * * *                               * * * * *
+        Initiative                                 (show)
+        * * * * *                               * * * * *
+        Professional Development                   (show)
+        * * * * *                               * * * * *
+        Critical Thinking                          (show)
+        * * * * *                               * * * * *
+        Time Management                            (show)
+        * * * * *                               * * * * *
 
         ~~~~~~~~~~~~~~~~~~~ Questions ~~~~~~~~~~~~~~~~~~~
 
@@ -135,6 +131,51 @@ function Candidate ({candidate, questions, themes}) {
       </fragment>
     )
     : null
+}
+
+function Rating (props) {
+  const {disabled, scale, value} = props
+
+  return (
+    <ul className={`rating `}>
+      {scale.map(({score}) => <li key={score}>{score}</li>)}
+
+      <style jsx>{`
+        .rating {
+          background: ${disabled ? 'gainsboro' : 'transparent'};
+          margin: 0;
+          padding: 0;
+        }
+
+        .rating li {
+          display: inline;
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+        }
+      `}</style>
+    </ul>
+  )
+}
+
+function Theme ({ratings: {group = {}, scale}, title}) {
+  const [show, setShow] = useState(['hide', 'show'])
+  const showToggle = () => {
+    const [a, b] = show
+    setShow([b, a])
+    
+  }
+
+  return (
+    <figure>
+      <figcaption>
+        <strong>{title}</strong>
+        <span onClick={showToggle}>({show[0]})</span>
+      </figcaption>
+      <Rating scale={scale} value={group[title]} />
+      <Rating disabled={true} scale={scale} value={group[title]} />
+    </figure>
+  )
 }
 
 export default Candidate
