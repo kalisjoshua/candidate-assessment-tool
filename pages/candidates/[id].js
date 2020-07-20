@@ -21,12 +21,55 @@ export async function getStaticProps ({params: {id}}) {
   return {props: (candidate ? {candidate, ...meta} : {...meta})}
 }
 
-function Candidate ({candidate, questions, ratings, themes}) {
-  // console.log({candidate, questions, ratings, themes})
+/*
+  The data from the API can provide how many people have responded as an indicator
+  to the user of how many people have made a decision without divulging what their
+  decision actually is. Then, once the user submits their score they would be able
+  to see the aggregate score of everyone.
 
+  The number of users who have responded could "fill up" the background of the
+  group score indicator.
+  {
+    ratings: {
+      "Communication": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Teamwork": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Emotional Inteligence": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Coachability": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Initiative": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Professional Development": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Critical Thinking": {
+        respondants: 4,
+        score: 1.25,
+      },
+      "Time Management": {
+        respondants: 4,
+        score: 1.25,
+      },
+    }
+  }
+*/
+
+function Candidate ({candidate, questions, ratings, themes}) {
   const ratingsForThemes = {
     group: candidate.ratings,
-    // mine:
     scale: ratings,
   }
 
@@ -34,8 +77,12 @@ function Candidate ({candidate, questions, ratings, themes}) {
     document.title = `${candidate.name} - Candidate Assessment Tool`
   })
 
-  return candidate
-    ? (
+  if (!candidate) {
+
+    return null
+  } else {
+
+    return (
       <fragment>
         <h2>{candidate.name}</h2>
 
@@ -53,9 +100,19 @@ function Candidate ({candidate, questions, ratings, themes}) {
 
         <h3>Questions</h3>
 
-        <ul>
-          {questions.map(({title}, i) => <li key={i}>{title}</li>)}
-        </ul>
+        <ol>
+          {questions
+            .map(({followups, theme, title}, i) => (
+              <li key={i}>
+                {title}
+                <em style={{float: "right"}}>[{theme}]</em>
+                <ul>
+                  {followups.map((question) => <li key="question">{question}</li>)}
+                </ul>
+              </li>
+            ))
+          }
+        </ol>
 
         <hr />
 
@@ -130,28 +187,42 @@ function Candidate ({candidate, questions, ratings, themes}) {
         */}
       </fragment>
     )
-    : null
+  }
 }
 
 function Rating (props) {
   const {disabled, scale, value} = props
+  const isSelected = (score) => value >= +score
+    ? "selected"
+    : ""
 
   return (
     <ul className={`rating `}>
-      {scale.map(({score}) => <li key={score}>{score}</li>)}
+      {scale.map(({score}) => <li className={isSelected(score)} key={score} title={score} />)}
 
       <style jsx>{`
         .rating {
           background: ${disabled ? 'gainsboro' : 'transparent'};
+          border-radius: 5px;
+          display: flex;
+          justify-content: space-evenly;
           margin: 0;
-          padding: 0;
+          padding: 3px 2ex;
         }
 
         .rating li {
-          display: inline;
+          cursor: pointer;
           list-style-type: none;
-          margin: 0;
+          margin: 0 1ex;
           padding: 0;
+        }
+
+        .rating li:before {
+          content: "☆";
+        }
+
+        .rating li.selected:before {
+          content: "★";
         }
       `}</style>
     </ul>
@@ -163,17 +234,49 @@ function Theme ({ratings: {group = {}, scale}, title}) {
   const showToggle = () => {
     const [a, b] = show
     setShow([b, a])
-    
+
   }
 
   return (
-    <figure>
+    <figure className="theme">
       <figcaption>
         <strong>{title}</strong>
-        <span onClick={showToggle}>({show[0]})</span>
+        <span onClick={showToggle}>({show[0]} questions)</span>
       </figcaption>
-      <Rating scale={scale} value={group[title]} />
-      <Rating disabled={true} scale={scale} value={group[title]} />
+
+      <section>
+        <Rating scale={scale} value={group[title]} />
+        <Rating disabled={true} scale={scale} value={group[title]} />
+      </section>
+
+      <style jsx>{`
+        figcaption {
+          display: flex;
+        }
+
+        figcaption strong {
+          flex-grow: 1;
+        }
+
+        figcaption span {
+          cursor: pointer;
+          user-select: none;
+        }
+
+        section {
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .theme {
+          margin: 0 4ex;
+          padding: 1ex 0 0;
+        }
+
+        .theme + .theme {
+          border-top: 1px dashed rgba(0, 0, 0, 0.3);
+        }
+      `}</style>
     </figure>
   )
 }
