@@ -52,30 +52,30 @@ if (!store["candidates"]) {
     }
   ]
 
-  store["competencies"] = {
-    Culture: [
-      // 'How do you demonstrate behaviors that are in line with our ISMs',
-      'Attitude and behavior are in line with the ISMs?',
-      // 'How do you demonstrate behavior that is in line with your team standards',
-      'Attitude and behavior are in line with team standards?',
-    ],
-    Competency: [
-      // 'How do you demonstrate the skills expected for your role?',
-      'Skill level is at or above expected level?',
-      // 'How do you actively work to develop your skills and reach your career goals?',
-      'Actively works to develop skills and reach career goals?',
-    ],
-    Contribution: [
-      // 'How have you impacted the team\'s ability to achieve their goals?',
-      'Contributes to the ability of the team to achieve their goals?',
-      // 'How often do you deliver on your goals, assignments and deadlines?',
-      'Deliver on goals, assignments and deadlines?',
-    ],
-  }
+  // store["competencies"] = {
+  //   Culture: [
+  //     // 'How do you demonstrate behaviors that are in line with our ISMs',
+  //     'Attitude and behavior are in line with the ISMs?',
+  //     // 'How do you demonstrate behavior that is in line with your team standards',
+  //     'Attitude and behavior are in line with team standards?',
+  //   ],
+  //   Competency: [
+  //     // 'How do you demonstrate the skills expected for your role?',
+  //     'Skill level is at or above expected level?',
+  //     // 'How do you actively work to develop your skills and reach your career goals?',
+  //     'Actively works to develop skills and reach career goals?',
+  //   ],
+  //   Contribution: [
+  //     // 'How have you impacted the team\'s ability to achieve their goals?',
+  //     'Contributes to the ability of the team to achieve their goals?',
+  //     // 'How often do you deliver on your goals, assignments and deadlines?',
+  //     'Deliver on goals, assignments and deadlines?',
+  //   ],
+  // }
 
   store["evaluations"] = {}
 
-  store["ratings"] = [
+  store["ratingScale"] = [
     {
       competencies: 'I would not want to work with this person in any context.',
       questions: 'I was put off by their response.',
@@ -98,7 +98,7 @@ if (!store["candidates"]) {
     },
   ]
 
-  const topics = `
+  store["survey"] = `
     # Communication
       + Give us an example of a time when you were going to miss a deadline.
         - What did you communicate?
@@ -198,25 +198,21 @@ if (!store["candidates"]) {
         - What ledd you to that decision?
         - Do you feel that was the best choice?
   `.trim().split('\n')
-    .reduce((acc, str) => {
-      const [_, leader, title] = str.trim().match(/^([-#+])\s+(.*)$/)
+    .reduce(({ category, survey, topic }, str) => {
+      const [_, leader, text] = str.trim().match(/^([-#+])\s+(.*)$/)
 
       switch (leader) {
         case "#":
-          acc.current = title
-          acc.questions[title] = []
+          survey[category = text] = {}
           break
         case "+":
-          acc.questions[acc.current].push([title])
+          survey[category][topic = text] = []
           break
         case "-":
-          const i = acc.questions[acc.current].length
-          acc.questions[acc.current][i - 1].push(title)
+          survey[category][topic].push(text)
           break
       }
 
-      return acc
-    }, {current: '', questions: {}})
-
-  store["topics"] = topics.questions
+      return { category, survey, topic }
+    }, {current: '', survey: {}})["survey"]
 }

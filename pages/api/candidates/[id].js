@@ -24,6 +24,8 @@ export default handlerFactory({
     item.href = `/${resource}/${item.id}`
 
     item.evaluations = datastore.get("evaluations")[id]
+    throw new Error("only return evaluations/assessments for the user not for everyone")
+    throw new Error("summarize the group responses per category")
 
     // summary of responses from interviewers
     // did all interviewers give responses to all of the candidate's responses
@@ -39,17 +41,22 @@ export default handlerFactory({
   // for the candidates responses to questions
   PUT: (req, res) => {
     const {query: {id}} = req
-    const reviewer = req.body.reviewer
+    const reviewer = req.headers?.["x-reviewer"]
+    // console.log("PUT")
 
-    const item = getCandidate(id)
+    if (!reviewer) {
+      res.status(403).json({message: "Reviewer identity header not provided."})
+    } else {
+      const all = datastore.get("evaluations")
 
-    const all = datastore.get("evaluations")
+      all[id] = {
+        ...all[id],
+        [reviewer]: JSON.parse(req.body),
+      }
 
-    all[id] = all[id] || {}
-    all[id][req.body.reviewer] = req.body.scores
+      datastore.put("evaluations", all)
 
-    datastore.put("evaluations", all)
-
-    res.status(200).json({})
+      res.status(200).json({})
+    }
   },
 })

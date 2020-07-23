@@ -1,18 +1,18 @@
-import {candidates} from './candidates'
-import datastore from 'modules/datastore'
-import factory from 'modules/handlerFactory'
+import {candidates} from "./candidates"
+import datastore from "modules/datastore"
+import factory from "modules/handlerFactory"
 
 const links = [
   {
-    href: '/candidates',
-    title: 'Candidates',
+    href: "/candidates",
+    title: "Candidates",
   }
 ]
 const reducer = (acc, resource) => ({
   ...acc,
   [resource]: datastore.get(resource) || []
 })
-const root = ['competencies', 'ratings', 'topics']
+const root = ["competencies", "ratingScale", "survey"]
   .reduce(reducer, {links})
 
 export default factory({

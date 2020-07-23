@@ -4,15 +4,21 @@ const defaultOptions = {
   }
 }
 
-function simpleSDK (root, instanceOptions) {
+function simpleSDK (root, instanceOptions = {}) {
   root = root.replace(/\/+$/, "")
 
   const methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
 
-  return new Proxy({}, {
-    get: function (_, method) {
-      method = method.toUpperCase()
+  const core = {
+    headers: (headers) => instanceOptions.headers = headers,
+  }
 
+  return new Proxy(core, {
+    get: function (target, method) {
+      if (target[method]) return target[method]
+
+      method = method.toUpperCase()
+      
       if (!methods.includes(method)) {
         throw new Error(`Invalid method provided: ${method}`)
       }

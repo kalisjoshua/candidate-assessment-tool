@@ -8,18 +8,16 @@ const reviewer = ((key = "reviewer") => ({
   set: (val) => localStorage.setItem(key, val),
 }))()
 
-function Candidate ({candidate, ratings, topics}) {
+function Candidate ({candidate, ratingScale, survey}) {
   if (!candidate) return null
 
-  // **** Topic > Situation > Question(s) **** //
+  ratingScale = ratingScale
+    .map(({questions, score}) => ({score, text: questions}))
 
-  // this is a mess and I am sorry for my choices
-  const reviewersRatings = Object.keys(topics)
-    .reduce((acc, topic) => ({...acc, [topic]: topics[topic].reduce((a, [situation]) => ({...a, [situation]: 0}), {})}), {})
+  // **** survey = Category / Topic / Question **** //
 
-  // console.log(candidate)
-  const [myRatings, setMyRatings] = useState(reviewersRatings)
-  const topicToggles = Object.keys(topics)
+  const [myRatings, setMyRatings] = useState({})
+  const categoryToggles = Object.keys(survey)
     .reduce((acc, topic) => {
       const [state, set] = useState(false)
 
@@ -33,7 +31,7 @@ function Candidate ({candidate, ratings, topics}) {
     }, {})
 
   useEffect(() => {
-    document.title = `${candidate.name} - Candidate Assessment Tool`
+    document.title = `${candidate.name} - Candidate Assessment`
 
     if (!reviewer.get()) {
       reviewer.set(Math.random().toString(36).slice(2))
@@ -42,7 +40,11 @@ function Candidate ({candidate, ratings, topics}) {
     if (candidate.evaluations?.[reviewer.get()]) {
       setMyRatings(candidate.evaluations[reviewer.get()])
     }
-  })
+
+    bff.headers({
+      "x-reviewer": reviewer.get(),
+    })
+  }, ["only run this effect once per page load; don't check any props for changes"])
 
   return (
     <fragment>
@@ -50,31 +52,29 @@ function Candidate ({candidate, ratings, topics}) {
 
       <h2>{candidate.name}</h2>
 
-      {Object.keys(topics)
-        .map((topic) => (
-          <section className="topic">
-            <h3>{topicTogglerIcon(topicToggles[topic])} {topic}</h3>
+      {Object.keys(survey)
+        .map((category, key) => (
+          <section key={key}>
+            <h3>{categoryTogglerIcon(categoryToggles[category])} {category}</h3>
 
-            {topicToggles[topic].value && questions({
-              list: topics[topic],
-              myRatings: myRatings[topic],
-              ratingsScale: ratings
-                .map(({questions, score}) => ({score, text: questions})),
-              submitRating: (situation, rating) => {
-                const reset = rating === myRatings[topic][situation]
+            {categoryToggles[category].value && questions({
+              myRatings: myRatings[category],
+              ratingScale,
+              submitRating: (topic, rating) => {
+                const reset = rating === myRatings?.[category]?.[topic]
 
-                const newState = {...myRatings}
-                newState[topic][situation] = reset ? 0 : rating
+                const body = {...myRatings}
 
-                bff.put(candidate.href, {
-                  body: {
-                    reviewer: reviewer.get(),
-                    scores: myRatings,
-                  }
-                })
+                body[category] = {
+                  ...body[category],
+                  [topic]: reset ? 0 : rating,
+                }
 
-                setMyRatings(newState)
+                bff.PUT(candidate.href, {body})
+
+                setMyRatings(body)
               },
+              topics: survey[category],
             })}
 
           </section>
@@ -86,49 +86,65 @@ function Candidate ({candidate, ratings, topics}) {
   )
 }
 
+function categoryTogglerIcon({ icon, toggle }) {
+
+  return (
+    <span onClick={toggle}>
+      {icon}
+      <style jsx>{`
+        span {
+          cursor: pointer;
+          transition: 300ms;
+          user-select: none;
+        }
+        span:hover {
+          background: cornflowerBlue;
+        }
+      `}</style>
+    </span>
+  )
+}
+
 async function getStaticPaths () {
-  const paths = (await bff.get("/candidates"))
+  const paths = (await bff.GET("/candidates"))
     .map(({href}) => href)
 
   return {paths, fallback: true}
 }
 
 async function getStaticProps ({params: {id}}) {
-  const candidate = await bff.get(`/candidates/${id}`)
-  const meta = await bff.get()
+  const candidate = await bff.GET(`/candidates/${id}`)
+  const meta = await bff.GET()
 
   delete meta.links
 
   return {props: (candidate ? {candidate, ...meta} : {...meta})}
 }
 
-function questions ({list, myRatings, ratingsScale, submitRating}) {
+function questions ({myRatings, ratingScale, submitRating, topics}) {
 
   return (
-    <ol className="topics">
-      {list
-        .map(([situation, ...questions]) => (
+    <ol>
+      {Object.keys(topics)
+        .map((topic) => (
           <li>
-            {situation}
+            {topic}
             {rating({
-              myRating: myRatings[situation],
-              ratingsScale,
-              submitRating: (score) => submitRating(situation, score),
+              myRating: myRatings?.[topic],
+              ratingScale,
+              submitRating: (score) => submitRating(topic, score),
             })}
 
-            <ul>
-              {questions
-                .map((text) => <li>{text}</li>)}
-            </ul>
+            <ul>{topics[topic].map((text) => <li>{text}</li>)}</ul>
           </li>
         ))}
 
       <style jsx>{`
-        .topics > li {
+        ol > li {
           margin: 0;
           padding: 2ex;
         }
-        .topics > li:nth-child(2n+1) {
+        ol > li:nth-child(2n+1) {
           background: rgba(0, 0, 0, 0.08);
         }
       `}</style>
@@ -136,11 +152,11 @@ function questions ({list, myRatings, ratingsScale, submitRating}) {
   )
 }
 
-function rating ({myRating, ratingsScale, situation, submitRating}) {
+function rating ({myRating, ratingScale, submitRating}) {
 
   return (
     <ol>
-      {ratingsScale
+      {ratingScale
         .map(({score, text}) => (
           <li onClick={() => submitRating(score)} title={text}>
             {myRating && myRating >= score ? "★" : "☆"}
@@ -177,25 +193,6 @@ function rating ({myRating, ratingsScale, situation, submitRating}) {
         li:nth-of-type(4):hover {background: green;}
       `}</style>
     </ol>
-  )
-}
-
-function topicTogglerIcon ({icon, toggle}) {
-
-  return (
-    <span onClick={toggle}>
-      {icon}
-      <style jsx>{`
-        span {
-          cursor: pointer;
-          transition: 300ms;
-          user-select: none;
-        }
-        span:hover {
-          background: cornflowerBlue;
-        }
-      `}</style>
-    </span>
   )
 }
 
