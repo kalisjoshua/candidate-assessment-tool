@@ -7,7 +7,7 @@ function factory (methods) {
 }
 
 function NOT_FOUND (_, res) {
-  res.status(404).send('')
+  res.status(404).json({message: "Not found."})
 }
 
 export default factory

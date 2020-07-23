@@ -8,8 +8,8 @@ export default {
 }
 
 // *** TEST DATA *** //
-if (!store['candidates']) {
-  store['candidates'] = [
+if (!store["candidates"]) {
+  store["candidates"] = [
     {
         "id": "moaczk",
         "name": "Book, Derrial \"Shepherd\""
@@ -52,7 +52,7 @@ if (!store['candidates']) {
     }
   ]
 
-  store['competencies'] = {
+  store["competencies"] = {
     Culture: [
       // 'How do you demonstrate behaviors that are in line with our ISMs',
       'Attitude and behavior are in line with the ISMs?',
@@ -73,7 +73,9 @@ if (!store['candidates']) {
     ],
   }
 
-  store['ratings'] = [
+  store["evaluations"] = {}
+
+  store["ratings"] = [
     {
       competencies: 'I would not want to work with this person in any context.',
       questions: 'I was put off by their response.',
@@ -83,11 +85,6 @@ if (!store['candidates']) {
       competencies: 'I would not want this person on my team.',
       questions: 'I don\'t think their response was very good.',
       score: -1,
-    },
-    {
-      competencies: 'I have no feelings - for or against - about this person joining our team.',
-      questions: 'I have no reaction to their response.',
-      score: 0,
     },
     {
       competencies: 'I think this person would fit somewhere within our organization.',
@@ -176,14 +173,14 @@ if (!store['candidates']) {
       + Describe what you do to continue improving your skills.
         - What do you want to focus on?
         - What are the next steps?
-        - What would you liek to see because of this improvement?
+        - What would you like to see because of this improvement?
     # Critical Thinking
       + Describe a time when you found a creative way to overcome an obstacle.
         - Was anyone else involved?
         - What was the impact?
       + Tell us about a process improvement you've made?
         - What was the follow-through?
-        - What did youdo to ensure this was implemented?
+        - What did you do to ensure this was implemented?
         - Was anyone else involved?
       + Walk us through a time when you identified and prevented a major issue.
         - How did you recognize the potential issue?
@@ -203,23 +200,23 @@ if (!store['candidates']) {
   `.trim().split('\n')
     .reduce((acc, str) => {
       const [_, leader, title] = str.trim().match(/^([-#+])\s+(.*)$/)
-      const theme = acc.themes[acc.themes.length - 1]
 
       switch (leader) {
-        case '#':
-          acc.themes.push(title)
+        case "#":
+          acc.current = title
+          acc.questions[title] = []
           break
-        case '+':
-          acc.questions.push({followups: [], theme, title})
+        case "+":
+          acc.questions[acc.current].push([title])
           break
-        case '-':
-          acc.questions[acc.questions.length - 1].followups.push(title)
+        case "-":
+          const i = acc.questions[acc.current].length
+          acc.questions[acc.current][i - 1].push(title)
           break
       }
 
       return acc
-    }, {themes: [], questions: []})
+    }, {current: '', questions: {}})
 
-  store['questions'] = topics.questions
-  store['themes'] = topics.themes
+  store["topics"] = topics.questions
 }

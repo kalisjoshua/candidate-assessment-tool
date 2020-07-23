@@ -1,284 +1,206 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useState} from "react"
 
-const getAll = () => fetch('http://localhost:3000/api/candidates')
-  .then((res) => res.json())
+import simpleSDK from "modules/simpleSDK"
 
-export async function getStaticPaths () {
-  const paths = (await getAll())
+const bff = simpleSDK("http://localhost:3000/api")
+const reviewer = ((key = "reviewer") => ({
+  get: () => localStorage.getItem(key),
+  set: (val) => localStorage.setItem(key, val),
+}))()
+
+function Candidate ({candidate, ratings, topics}) {
+  if (!candidate) return null
+
+  // **** Topic > Situation > Question(s) **** //
+
+  // this is a mess and I am sorry for my choices
+  const reviewersRatings = Object.keys(topics)
+    .reduce((acc, topic) => ({...acc, [topic]: topics[topic].reduce((a, [situation]) => ({...a, [situation]: 0}), {})}), {})
+
+  // console.log(candidate)
+  const [myRatings, setMyRatings] = useState(reviewersRatings)
+  const topicToggles = Object.keys(topics)
+    .reduce((acc, topic) => {
+      const [state, set] = useState(false)
+
+      acc[topic] = {
+        get icon() {return `[ ${state ? "+" : "-"} ]`},
+        get value() {return state},
+        toggle() {set(!state)},
+      }
+
+      return acc
+    }, {})
+
+  useEffect(() => {
+    document.title = `${candidate.name} - Candidate Assessment Tool`
+
+    if (!reviewer.get()) {
+      reviewer.set(Math.random().toString(36).slice(2))
+    }
+
+    if (candidate.evaluations?.[reviewer.get()]) {
+      setMyRatings(candidate.evaluations[reviewer.get()])
+    }
+  })
+
+  return (
+    <fragment>
+      <hr />
+
+      <h2>{candidate.name}</h2>
+
+      {Object.keys(topics)
+        .map((topic) => (
+          <section className="topic">
+            <h3>{topicTogglerIcon(topicToggles[topic])} {topic}</h3>
+
+            {topicToggles[topic].value && questions({
+              list: topics[topic],
+              myRatings: myRatings[topic],
+              ratingsScale: ratings
+                .map(({questions, score}) => ({score, text: questions})),
+              submitRating: (situation, rating) => {
+                const reset = rating === myRatings[topic][situation]
+
+                const newState = {...myRatings}
+                newState[topic][situation] = reset ? 0 : rating
+
+                bff.put(candidate.href, {
+                  body: {
+                    reviewer: reviewer.get(),
+                    scores: myRatings,
+                  }
+                })
+
+                setMyRatings(newState)
+              },
+            })}
+
+          </section>
+        ))}
+
+      <style jsx>{`
+      `}</style>
+    </fragment>
+  )
+}
+
+async function getStaticPaths () {
+  const paths = (await bff.get("/candidates"))
     .map(({href}) => href)
 
   return {paths, fallback: true}
 }
 
-export async function getStaticProps ({params: {id}}) {
-  const [candidate] = (await getAll())
-    .filter(({href}) => href.split('/').includes(id))
-  const meta = await fetch('http://localhost:3000/api')
-    .then((res) => res.json())
+async function getStaticProps ({params: {id}}) {
+  const candidate = await bff.get(`/candidates/${id}`)
+  const meta = await bff.get()
 
   delete meta.links
 
   return {props: (candidate ? {candidate, ...meta} : {...meta})}
 }
 
-/*
-  The data from the API can provide how many people have responded as an indicator
-  to the user of how many people have made a decision without divulging what their
-  decision actually is. Then, once the user submits their score they would be able
-  to see the aggregate score of everyone.
-
-  The number of users who have responded could "fill up" the background of the
-  group score indicator.
-  {
-    ratings: {
-      "Communication": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Teamwork": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Emotional Inteligence": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Coachability": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Initiative": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Professional Development": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Critical Thinking": {
-        respondants: 4,
-        score: 1.25,
-      },
-      "Time Management": {
-        respondants: 4,
-        score: 1.25,
-      },
-    }
-  }
-*/
-
-function Candidate ({candidate, questions, ratings, themes}) {
-  const ratingsForThemes = {
-    group: candidate.ratings,
-    scale: ratings,
-  }
-
-  useEffect(() => {
-    document.title = `${candidate.name} - Candidate Assessment Tool`
-  })
-
-  if (!candidate) {
-
-    return null
-  } else {
-
-    return (
-      <fragment>
-        <h2>{candidate.name}</h2>
-
-        <hr />
-
-        <h3>Theme Ratings</h3>
-
-        <ul className="theme-ratings">
-          {themes.map((title, i) => (
-            <Theme key={`${title}-${i}`} ratings={ratingsForThemes} title={title}/>
-          ))}
-        </ul>
-
-        <hr />
-
-        <h3>Questions</h3>
-
-        <ol>
-          {questions
-            .map(({followups, theme, title}, i) => (
-              <li key={i}>
-                {title}
-                <em style={{float: "right"}}>[{theme}]</em>
-                <ul>
-                  {followups.map((question) => <li key="question">{question}</li>)}
-                </ul>
-              </li>
-            ))
-          }
-        </ol>
-
-        <hr />
-
-        <h3>Overall Evaluation</h3>
-
-        <h4>Competence</h4>
-        <p>* * * * *</p>
-
-        <h4>Culture</h4>
-        <p>* * * * *</p>
-
-        <h4>Notes</h4>
-
-        <textarea />
-
-        <button>Submit Evaluation</button>
-
-        <style jsx>{`
-          .theme-ratings {
-            margin: 0;
-            padding: 0;
-          }
-        `}</style>
-
-        {/*
-        Name, Candidate
-
-        ~~~~~~~~~~~~~~~~~~~~~ Themes ~~~~~~~~~~~~~~~~~~~~
-
-        Communication                              (show)
-        * * * * *                               * * * * *
-        Teamwork                                   (show)
-        * * * * *                               * * * * *
-        Emotional Intelligence                     (hide)
-        * * * * *                               * * * * *
-        Coachability                               (show)
-        * * * * *                               * * * * *
-        Initiative                                 (show)
-        * * * * *                               * * * * *
-        Professional Development                   (show)
-        * * * * *                               * * * * *
-        Critical Thinking                          (show)
-        * * * * *                               * * * * *
-        Time Management                            (show)
-        * * * * *                               * * * * *
-
-        ~~~~~~~~~~~~~~~~~~~ Questions ~~~~~~~~~~~~~~~~~~~
-
-        [Communication] [Teamwork] [...]
-
-        1. How?                              [Competence]
-
-        Score: * * * * *
-        Notes: __________________________________________
-
-        2. What?                                [Culture]
-
-        Score: * * * * *
-        Notes: __________________________________________
-
-        3. ...
-
-        ~~~~~~~~~~~~~~~~~~~~ Overall ~~~~~~~~~~~~~~~~~~~~
-
-        Competence                                Culture
-        * * * * *                               * * * * *
-
-        Notes                                           ^
-        _________________________________________________
-
-                                                   Submit
-        */}
-      </fragment>
-    )
-  }
-}
-
-function Rating (props) {
-  const {disabled, scale, value} = props
-  const isSelected = (score) => value >= +score
-    ? "selected"
-    : ""
+function questions ({list, myRatings, ratingsScale, submitRating}) {
 
   return (
-    <ul className={`rating `}>
-      {scale.map(({score}) => <li className={isSelected(score)} key={score} title={score} />)}
+    <ol className="topics">
+      {list
+        .map(([situation, ...questions]) => (
+          <li>
+            {situation}
+            {rating({
+              myRating: myRatings[situation],
+              ratingsScale,
+              submitRating: (score) => submitRating(situation, score),
+            })}
+
+            <ul>
+              {questions
+                .map((text) => <li>{text}</li>)}
+            </ul>
+          </li>
+        ))}
 
       <style jsx>{`
-        .rating {
-          background: ${disabled ? 'gainsboro' : 'transparent'};
-          border-radius: 5px;
-          display: flex;
-          justify-content: space-evenly;
+        .topics > li {
           margin: 0;
-          padding: 3px 2ex;
+          padding: 2ex;
         }
-
-        .rating li {
-          cursor: pointer;
-          list-style-type: none;
-          margin: 0 1ex;
-          padding: 0;
-        }
-
-        .rating li:before {
-          content: "☆";
-        }
-
-        .rating li.selected:before {
-          content: "★";
+        .topics > li:nth-child(2n+1) {
+          background: rgba(0, 0, 0, 0.08);
         }
       `}</style>
-    </ul>
+    </ol>
   )
 }
 
-function Theme ({ratings: {group = {}, scale}, title}) {
-  const [show, setShow] = useState(['hide', 'show'])
-  const showToggle = () => {
-    const [a, b] = show
-    setShow([b, a])
-
-  }
+function rating ({myRating, ratingsScale, situation, submitRating}) {
 
   return (
-    <figure className="theme">
-      <figcaption>
-        <strong>{title}</strong>
-        <span onClick={showToggle}>({show[0]} questions)</span>
-      </figcaption>
-
-      <section>
-        <Rating scale={scale} value={group[title]} />
-        <Rating disabled={true} scale={scale} value={group[title]} />
-      </section>
+    <ol>
+      {ratingsScale
+        .map(({score, text}) => (
+          <li onClick={() => submitRating(score)} title={text}>
+            {myRating && myRating >= score ? "★" : "☆"}
+          </li>
+        ))}
 
       <style jsx>{`
-        figcaption {
-          display: flex;
+        ol {
+          float: right;
+          font-size: 150%;
         }
-
-        figcaption strong {
-          flex-grow: 1;
+        ol:before {
+          content: "${myRating || "0"}";
+          padding: 0 1ex;
         }
-
-        figcaption span {
+        li {
+          border-radius: 3px;
           cursor: pointer;
+          display: inline;
+          line-height: 0;
+          margin: 0;
+          padding: .75ex .5ex .25ex;
           user-select: none;
         }
-
-        section {
-          display: flex;
-          justify-content: space-between;
+        li + li {
+          margin-left: 1ex;
         }
-
-        .theme {
-          margin: 0 4ex;
-          padding: 1ex 0 0;
+        li:hover {
+          transition: 300ms;
         }
+        li:nth-of-type(1):hover {background: red;}
+        li:nth-of-type(2):hover {background: orange;}
+        li:nth-of-type(3):hover {background: blue;}
+        li:nth-of-type(4):hover {background: green;}
+      `}</style>
+    </ol>
+  )
+}
 
-        .theme + .theme {
-          border-top: 1px dashed rgba(0, 0, 0, 0.3);
+function topicTogglerIcon ({icon, toggle}) {
+
+  return (
+    <span onClick={toggle}>
+      {icon}
+      <style jsx>{`
+        span {
+          cursor: pointer;
+          transition: 300ms;
+          user-select: none;
+        }
+        span:hover {
+          background: cornflowerBlue;
         }
       `}</style>
-    </figure>
+    </span>
   )
 }
 
 export default Candidate
+export {
+  getStaticPaths,
+  getStaticProps,
+}

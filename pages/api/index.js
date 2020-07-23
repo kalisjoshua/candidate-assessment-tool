@@ -12,7 +12,7 @@ const reducer = (acc, resource) => ({
   ...acc,
   [resource]: datastore.get(resource) || []
 })
-const root = ['competencies', 'ratings', 'themes', 'questions']
+const root = ['competencies', 'ratings', 'topics']
   .reduce(reducer, {links})
 
 export default factory({
