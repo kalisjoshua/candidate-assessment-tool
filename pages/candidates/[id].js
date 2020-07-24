@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react"
 
+import cycle from "modules/cycle"
 import simpleSDK from "modules/simpleSDK"
 
 const bff = simpleSDK("http://localhost:3000/api")
@@ -16,7 +17,8 @@ function Candidate ({candidate, ratingScale, survey}) {
 
   // **** survey = Category / Topic / Question **** //
 
-  const [myRatings, setMyRatings] = useState({})
+  const assessmentsURL = candidate.links
+    .find(({rels}) => rels.includes("describes"))?.href
   const categoryToggles = Object.keys(survey)
     .reduce((acc, topic) => {
       const [state, set] = useState(false)
@@ -29,6 +31,18 @@ function Candidate ({candidate, ratingScale, survey}) {
 
       return acc
     }, {})
+  const [myRatings, setMyRatings] = useState({})
+  const [summary, setSummary] = useState({})
+  const summaryCylce = cycle(() => {
+    bff.GET(assessmentsURL)
+      .then(({summary}) => {
+        if (summary) {
+          setSummary(summary)
+        }
+      })
+    
+    return () => summaryCycle.stop()
+  })
 
   useEffect(() => {
     document.title = `${candidate.name} - Candidate Assessment`
@@ -37,14 +51,19 @@ function Candidate ({candidate, ratingScale, survey}) {
       reviewer.set(Math.random().toString(36).slice(2))
     }
 
-    if (candidate.evaluations?.[reviewer.get()]) {
-      setMyRatings(candidate.evaluations[reviewer.get()])
-    }
-
     bff.headers({
       "x-reviewer": reviewer.get(),
     })
-  }, ["only run this effect once per page load; don't check any props for changes"])
+
+    bff.GET(assessmentsURL)
+      .then((assessmentSummary) => {
+        if (assessmentSummary[reviewer.get()]) {
+          setMyRatings(assessmentSummary[reviewer.get()])
+        }
+
+        summaryCylce.start()
+      })
+  }, ["only run this effect once per app/page load; don't check any props for changes"])
 
   return (
     <fragment>
@@ -55,7 +74,9 @@ function Candidate ({candidate, ratingScale, survey}) {
       {Object.keys(survey)
         .map((category, key) => (
           <section key={key}>
-            <h3>{categoryTogglerIcon(categoryToggles[category])} {category}</h3>
+            <h3>{categoryTogglerIcon(categoryToggles[category])} {category}
+              <span>{summary[category]}</span>
+            </h3>
 
             {categoryToggles[category].value && questions({
               myRatings: myRatings[category],
@@ -70,7 +91,13 @@ function Candidate ({candidate, ratingScale, survey}) {
                   [topic]: reset ? 0 : rating,
                 }
 
-                bff.PUT(candidate.href, {body})
+                summaryCylce.delay()
+
+                bff.POST(assessmentsURL, {body})
+                  .then(({summary}) => {
+                    console.log(summary)
+                    setSummary(summary)
+                  })
 
                 setMyRatings(body)
               },
@@ -81,6 +108,9 @@ function Candidate ({candidate, ratingScale, survey}) {
         ))}
 
       <style jsx>{`
+      h3 span {
+        float: right;
+      }
       `}</style>
     </fragment>
   )

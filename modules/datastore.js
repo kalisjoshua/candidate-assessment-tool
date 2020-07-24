@@ -73,7 +73,7 @@ if (!store["candidates"]) {
   //   ],
   // }
 
-  store["evaluations"] = {}
+  store["assessments"] = {}
 
   store["ratingScale"] = [
     {
