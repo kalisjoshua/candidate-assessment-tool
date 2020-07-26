@@ -1,10 +1,11 @@
 import {candidates} from "./candidates"
 import datastore from "modules/datastore"
-import factory from "modules/handlerFactory"
+import handlerFactory from "modules/handlerFactory"
 
 const links = [
   {
     href: "/candidates",
+    rels: ["canonical", "collection"],
     title: "Candidates",
   }
 ]
@@ -12,10 +13,10 @@ const reducer = (acc, resource) => ({
   ...acc,
   [resource]: datastore.get(resource) || []
 })
-const root = ["competencies", "ratingScale", "survey"]
+const root = ["ratingScale", "survey"]
   .reduce(reducer, {links})
 
-export default factory({
+export default handlerFactory({
   GET: (req, res) => {
     res.status(200).json(root)
   },

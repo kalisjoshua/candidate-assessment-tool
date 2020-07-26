@@ -1,24 +1,11 @@
-import {useEffect, useState} from "react"
+import {Fragment, useState, useEffect} from "react"
 
-import cycle from "modules/cycle"
-import simpleSDK from "modules/simpleSDK"
+// **** survey = Category / Topic / Question **** //
 
-const bff = simpleSDK("http://localhost:3000/api")
-const reviewer = ((key = "reviewer") => ({
-  get: () => localStorage.getItem(key),
-  set: (val) => localStorage.setItem(key, val),
-}))()
-
-function Candidate ({candidate, ratingScale, survey}) {
-  if (!candidate) return null
-
-  ratingScale = ratingScale
-    .map(({questions, score}) => ({score, text: questions}))
-
-  // **** survey = Category / Topic / Question **** //
-
-  const assessmentsURL = candidate.links
-    .find(({rels}) => rels.includes("describes"))?.href
+function Candidate ({bff, candidate, channel}) {
+  const {href, name, ratingScale, survey} = candidate
+  const [assessment, setAssessment] = useState(candidate.assessment || {})
+  const [summary, setSummary] = useState(candidate.summary || {})
   const categoryToggles = Object.keys(survey)
     .reduce((acc, topic) => {
       const [state, set] = useState(false)
@@ -31,46 +18,19 @@ function Candidate ({candidate, ratingScale, survey}) {
 
       return acc
     }, {})
-  const [myRatings, setMyRatings] = useState({})
-  const [summary, setSummary] = useState({})
-  const summaryCylce = cycle(() => {
-    bff.GET(assessmentsURL)
-      .then(({summary}) => {
-        if (summary) {
-          setSummary(summary)
-        }
-      })
-    
-    return () => summaryCycle.stop()
-  })
+
+  channel.pub("polling", href)
+  channel.sub("summary", setSummary)
 
   useEffect(() => {
-    document.title = `${candidate.name} - Candidate Assessment`
-
-    if (!reviewer.get()) {
-      reviewer.set(Math.random().toString(36).slice(2))
-    }
-
-    bff.headers({
-      "x-reviewer": reviewer.get(),
-    })
-
-    bff.GET(assessmentsURL)
-      .then((assessmentSummary) => {
-        if (assessmentSummary[reviewer.get()]) {
-          setMyRatings(assessmentSummary[reviewer.get()])
-        }
-
-        summaryCylce.start()
-      })
-  }, ["only run this effect once per app/page load; don't check any props for changes"])
+    document.title = `${name} - Candidate Assessment`
+  }, ["name"])
 
   return (
-    <fragment>
+    <Fragment>
       <hr />
-
-      <h2>{candidate.name}</h2>
-
+      <h2>{name}</h2>
+      
       {Object.keys(survey)
         .map((category, key) => (
           <section key={key}>
@@ -79,44 +39,34 @@ function Candidate ({candidate, ratingScale, survey}) {
             </h3>
 
             {categoryToggles[category].value && questions({
-              myRatings: myRatings[category],
+              assessment: assessment[category],
               ratingScale,
               submitRating: (topic, rating) => {
-                const reset = rating === myRatings?.[category]?.[topic]
+                const body = {...assessment}
+                const reset = rating === assessment?.[category]?.[topic]
 
-                const body = {...myRatings}
+                body[category] = body[category] || {}
+                body[category][topic] = reset ? 0 : rating
 
-                body[category] = {
-                  ...body[category],
-                  [topic]: reset ? 0 : rating,
-                }
+                bff.PATCH(href, {body}).then(setSummary)
 
-                summaryCylce.delay()
-
-                bff.POST(assessmentsURL, {body})
-                  .then(({summary}) => {
-                    console.log(summary)
-                    setSummary(summary)
-                  })
-
-                setMyRatings(body)
+                setAssessment(body)
               },
               topics: survey[category],
             })}
 
+            <style jsx>{`
+            h3 span {
+              float: right;
+            }
+            `}</style>
           </section>
         ))}
-
-      <style jsx>{`
-      h3 span {
-        float: right;
-      }
-      `}</style>
-    </fragment>
+    </Fragment>
   )
 }
 
-function categoryTogglerIcon({ icon, toggle }) {
+function categoryTogglerIcon({icon, toggle}) {
 
   return (
     <span onClick={toggle}>
@@ -135,23 +85,7 @@ function categoryTogglerIcon({ icon, toggle }) {
   )
 }
 
-async function getStaticPaths () {
-  const paths = (await bff.GET("/candidates"))
-    .map(({href}) => href)
-
-  return {paths, fallback: true}
-}
-
-async function getStaticProps ({params: {id}}) {
-  const candidate = await bff.GET(`/candidates/${id}`)
-  const meta = await bff.GET()
-
-  delete meta.links
-
-  return {props: (candidate ? {candidate, ...meta} : {...meta})}
-}
-
-function questions ({myRatings, ratingScale, submitRating, topics}) {
+function questions ({assessment, ratingScale, submitRating, topics}) {
 
   return (
     <ol>
@@ -160,7 +94,7 @@ function questions ({myRatings, ratingScale, submitRating, topics}) {
           <li>
             {topic}
             {rating({
-              myRating: myRatings?.[topic],
+              myRating: assessment?.[topic],
               ratingScale,
               submitRating: (score) => submitRating(topic, score),
             })}
@@ -182,14 +116,24 @@ function questions ({myRatings, ratingScale, submitRating, topics}) {
   )
 }
 
+function Page ({bff, channel}) {
+  const [candidate, update] = useState(false)
+
+  channel.sub("init", async () => {
+    update(await bff.GET(location.pathname))
+  })
+
+  return candidate && (<Candidate {...{bff, candidate, channel}} />)
+}
+
 function rating ({myRating, ratingScale, submitRating}) {
 
   return (
     <ol>
       {ratingScale
-        .map(({score, text}) => (
-          <li onClick={() => submitRating(score)} title={text}>
-            {myRating && myRating >= score ? "★" : "☆"}
+        .map(({rating, text}) => (
+          <li onClick={() => submitRating(rating)} title={text}>
+            {myRating && myRating >= rating ? "★" : "☆"}
           </li>
         ))}
 
@@ -226,8 +170,4 @@ function rating ({myRating, ratingScale, submitRating}) {
   )
 }
 
-export default Candidate
-export {
-  getStaticPaths,
-  getStaticProps,
-}
+export default Page

@@ -1,48 +1,87 @@
-import React from 'react'
-import App from 'next/app'
-import Head from 'next/head'
-import Link from 'next/link'
+import {useEffect} from "react"
 
-import globalStyles from 'styles/global'
+import Head from "next/head"
+import Link from "next/link"
 
-class Candidates extends App {
-  render () {
-    const {Component, pageProps} = this.props
+import cycle from "modules/cycle"
+import pubsubnub from "modules/pubsubnub"
+import simpleSDK from "modules/simpleSDK"
 
-    return (
-      <div className="container">
-        <Head>
-          <title>Candidate Assessment Tool</title>
-        </Head>
+import globalStyles from "styles/global"
 
-        <header>
-          <h1>Candidate Assessment Tool</h1>
+const bff = simpleSDK("http://localhost:3000/api")
+const channel = pubsubnub()
+let polling = false
+const reviewer = ((key = "reviewer") => ({
+  get: () => localStorage.getItem(key),
+  set: (val) => localStorage.setItem(key, val),
+}))()
 
-          <nav>
-            <ul>
-              <li><Link href="/"><a>Home</a></Link></li>
-            </ul>
-          </nav>
-        </header>
+function Page ({Component}) {
+  const title = "Candidate Assessment Tool"
 
-        <main>
-          <Component {...pageProps} />
-        </main>
+  useEffect(() => {
+    if (!reviewer.get()) {
+      reviewer.set(Math.random().toString(36).slice(2)) // create reviewer ID
+    }
 
-        <footer>
-          <hr />
-        </footer>
+    // persist reviewer ID in SDK
+    bff.headers({
+      "Content-Type": "application/json",
+      "x-reviewer": reviewer.get(),
+    })
 
-        <style jsx>{`
-          .container {
-            margin: 1ex;
-          }
-        `}</style>
+    channel.pub("init") // let the page know it can begin making API requests
+  }, ["just once"])
 
-        <style jsx global>{globalStyles}</style>
-      </div>
-    )
-  }
+  channel.sub("polling", (href) => {
+    if (!polling) {
+      polling = true
+
+      cycle(() => {
+        bff.GET(href)
+          .then(({summary}) => {
+            if (summary) {
+              channel.pub("summary", summary)
+            }
+          })
+      }).start()
+    }
+  })
+
+  return (
+    <div className="container">
+      <Head>
+        <title>{title}</title>
+      </Head>
+
+      <header>
+        <h1>{title}</h1>
+
+        <nav>
+          <ul>
+            <li><Link href="/"><a>Home</a></Link></li>
+          </ul>
+        </nav>
+      </header>
+
+      <main>
+        <Component bff={bff} channel={channel}/>
+      </main>
+
+      <footer>
+        <hr />
+      </footer>
+
+      <style jsx>{`
+      .container {
+        margin: 1ex;
+      }
+      `}</style>
+
+      <style jsx global>{globalStyles}</style>
+    </div>
+  )
 }
 
-export default Candidates
+export default Page
