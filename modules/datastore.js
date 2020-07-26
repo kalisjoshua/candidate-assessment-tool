@@ -1,14 +1,24 @@
-const store = {}
+import fs from "fs"
+import path from "path"
+
+const location = path.join(process.cwd(), "db.json")
+const store = JSON.parse(fs.readFileSync(location, "utf8"))
+
+const persist = (data) => fs.writeFileSync(location, JSON.stringify(data), "utf8")
 
 export default {
-  add: (key, record) => (store[key].push(record), store[key]),
-  all: () => store,
   get: (key) => store[key],
-  put: (key, data) => (store[key] = data, store[key]),
+  put: (key, data) => {
+    store[key] = data
+
+    persist(store)
+
+    return store[key]
+  },
 }
 
 // *** TEST DATA *** //
-if (!store["candidates"]) {
+if (false) {
   store["candidates"] = [
     {
         "id": "moaczk",
@@ -215,4 +225,6 @@ if (!store["candidates"]) {
 
       return { category, survey, topic }
     }, {current: '', survey: {}})["survey"]
+
+  persist(store)
 }

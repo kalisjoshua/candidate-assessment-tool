@@ -1,4 +1,3 @@
-import {candidates} from "./candidates"
 import datastore from "modules/datastore"
 import handlerFactory from "modules/handlerFactory"
 

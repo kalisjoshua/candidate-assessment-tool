@@ -66,7 +66,7 @@ function Page ({Component}) {
       </header>
 
       <main>
-        <Component bff={bff} channel={channel}/>
+        <Component {...{bff, channel}} />
       </main>
 
       <footer>
